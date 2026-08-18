@@ -1,0 +1,52 @@
+name: TDS GA7 Release Gate
+on:
+  push:
+    branches:
+      - main
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          
+      - name: Install dependencies
+        run: pip install fastapi uvicorn requests
+        
+      - name: Run server in background
+        run: uvicorn main:app --port 8000 &
+        
+      - name: Wait for server to start
+        run: sleep 3
+        
+      - name: TDS identity: 22ds2000150@ds.study.iitm.ac.in
+        run: echo "Identity verified"
+        
+      - name: Test local endpoint
+        run: |
+          curl -s -X POST http://localhost:8000/release-gate \
+          -H "Content-Type: application/json" \
+          -d '{
+            "target": "preview",
+            "event": "push",
+            "ref": "refs/heads/main",
+            "workflow": {
+              "trigger": "push",
+              "permissions": {"contents":"read", "packages":"write", "id-token":"none"},
+              "testsPassed": true,
+              "matrixComplete": true,
+              "failFast": false,
+              "actions": [{"owner":"actions", "name":"checkout", "ref":"v4"}]
+            },
+            "image": {
+              "multiStage": true,
+              "runsAsRoot": false,
+              "secretMode": "none",
+              "criticalVulnerabilities": 0,
+              "digestPinned": true
+            }
+          }'
